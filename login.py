@@ -1,20 +1,31 @@
 #!/usr/bin/env python
 import paramiko
+import os.path
+import json
 ssh = paramiko.SSHClient()
 ssh.load_system_host_keys()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-#transport = ssh.get_transport()
-ssh.connect(hostname='10.8.6.144', username='pdcadmin', password='JkeioNy6Ghwe$W@')
-print "login OK!!"
-stdin, stdout, stderr = ssh.exec_command("ls -a")
-while not stdout.channel.exit_status_ready():
-    # Only print data if there is data to read in the channel
-    if stdout.channel.recv_ready():
-        #rl, wl, xl = select.select([stdout.channel], [], [], 0.0)
-        #if len(rl) > 0:
-            # Print data from stdout
-            print stdout.channel.recv(1024),
-#command = "ls -a"
-#ssh.exec_command(command)
-#print stdout
-ssh.close()
+ip_file = open('ip.txt', 'r')
+for host in ip_file:
+        ssh.connect(hostname=host, username='pdcadmin', password='JkeioNy6Ghwe$W@')
+        stdin, stdout, stderr = ssh.exec_command("free -om | gawk  '/Mem:/{print $3}'")
+        while not stdout.channel.exit_status_ready() :#and hostname.channel.exit_status_ready()
+                if stdout.channel.recv_ready():
+                        mem_util=stdout.channel.recv(1024).rstrip()
+        stdin, stdout, stderr = ssh.exec_command("free -m | gawk  '/cache:/{print $3}'")
+        while not stdout.channel.exit_status_ready() :
+                if stdout.channel.recv_ready():
+                        cache_util=stdout.channel.recv(1024).rstrip()
+        stdin, stdout, stderr = ssh.exec_command("sar -u | gawk  '/Average:/{print $8}'")
+        while not stdout.channel.exit_status_ready() :#and hostname.channel.exit_status_ready()
+                if stdout.channel.recv_ready():
+                        cpu_idle=float(stdout.channel.recv(1024).rstrip())
+        stdin, stdout, stderr = ssh.exec_command('hostname')
+        while not stdout.channel.exit_status_ready():
+                if stdout.channel.recv_ready():
+                        hostname=stdout.channel.recv(1024).rstrip()
+        entry="{\"CPU_IDLE\":\"%s\",\"CPU_UTILISED\":\"%.2f\",\"MEM_UTILISED\":\"%s\",\"CACHE_UTILISED\":\"%s\"}" %(cpu_idle,(100.00-cpu_idle),mem_util,cache_util)
+        entry=json.dumps(entry)
+        print entry
+        open('%s.json' %hostname, 'a')
+        ssh.close()
