@@ -29,3 +29,4 @@ for host in ip_file:
         print entry
         open('%s.json' %hostname, 'a')
         ssh.close()
+#this is a test for git
